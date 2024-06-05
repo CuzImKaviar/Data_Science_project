@@ -21,7 +21,7 @@ def prepare_data(data_dir):
             if file.endswith('.wav') or file.endswith('.mp3'):
                 file_path = os.path.join(root, file)
                 y, sr = librosa.load(file_path)
-                label = os.path.basename(root)  # Annahme: der Ordnername ist das Label
+                label = os.path.basename(root)  # Ordnername ist das Label
                 audio_data.append(y)
                 labels.append(label)
                 sample_rates.append(sr)
@@ -42,20 +42,24 @@ def extract_features(segment, sr):
     mfccs = librosa.feature.mfcc(y=segment, sr=sr, n_mfcc=13)
     return np.mean(mfccs.T, axis=0)
 
+# Streamlit-Anwendung
+st.title('Tierstimmen-Erkennung')
+
 # Training des Modells, falls es noch nicht existiert
 if not os.path.exists(model_path):
     st.write("Trainiere das Modell...")
-    print("Trainiere das Modell...")
-    audio_data, labels, sample_rates = prepare_data(data_dir)
-    st.write(f"Anzahl geladener Audiodateien: {len(audio_data)}")
-    print(f"Anzahl geladener Audiodateien: {len(audio_data)}")
     
+    # Datenaufbereitung
+    audio_data, labels, sample_rates = prepare_data(data_dir)
+    
+    st.write(f"Anzahl geladener Audiodateien: {len(audio_data)}")
+    
+    # Normalisiere und segmentiere Audiodaten
     audio_data_normalized = [librosa.util.normalize(y) for y in audio_data]
     audio_segments = [segment for y, sr in zip(audio_data_normalized, sample_rates) for segment in segment_audio(y, sr)]
     features = [extract_features(segment, sr) for segment, sr in zip(audio_segments, sample_rates)]
     
     st.write(f"Anzahl extrahierter Segmente: {len(audio_segments)}")
-    print(f"Anzahl extrahierter Segmente: {len(audio_segments)}")
 
     # Datenaufteilung
     X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
@@ -78,39 +82,30 @@ if not os.path.exists(model_path):
     
     # Evaluierung
     y_pred = best_model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='weighted')
-    recall = recall_score(y_test, y_pred, average='weighted')
-    f1 = f1_score(y_test, y_pred, average='weighted')
-
-    st.write(f'Genauigkeit: {accuracy}')
-    st.write(f'Präzision: {precision}')
-    st.write(f'Recall: {recall}')
-    st.write(f'F1-Score: {f1}')
+    report = classification_report(y_test, y_pred, output_dict=True)
     st.write(classification_report(y_test, y_pred))
-    print(f'Genauigkeit: {accuracy}')
-    print(f'Präzision: {precision}')
-    print(f'Recall: {recall}')
-    print(f'F1-Score: {f1}')
-    print(classification_report(y_test, y_pred))
+
+    accuracy = report['accuracy']
+    st.write(f'Genauigkeit: {accuracy}')
 else:
     st.write("Lade das trainierte Modell...")
-    print("Lade das trainierte Modell...")
     with open(model_path, 'rb') as f:
         best_model = pickle.load(f)
+    st.success("Das trainierte Modell wurde erfolgreich geladen.")
 
-# Streamlit-Anwendung
-st.title('Tierstimmen-Erkennung')
-
-uploaded_file = st.file_uploader('Lade eine Audiodatei hoch', type=['wav', 'mp3'])
-if uploaded_file is not None:
-    st.write("Datei hochgeladen:", uploaded_file.name)
-    y, sr = librosa.load(uploaded_file)
+# Funktion zur Vorhersage
+def predict_audio(audio_file):
+    y, sr = librosa.load(audio_file)
     segment = librosa.util.normalize(y)
     mfccs = librosa.feature.mfcc(y=segment, sr=sr, n_mfcc=13)
     mfccs_mean = np.mean(mfccs.T, axis=0)
-    
-    prediction = best_model.predict([mfccs_mean])
+    return best_model.predict([mfccs_mean])
+
+# Audiodatei hochladen und vorhersagen
+uploaded_file = st.file_uploader('Lade eine Audiodatei hoch', type=['wav', 'mp3'])
+if uploaded_file is not None:
+    st.write("Datei hochgeladen:", uploaded_file.name)
+    prediction = predict_audio(uploaded_file)
     st.write(f'Die erkannte Tierstimme ist: {prediction[0]}')
 else:
     st.write("Bitte eine Audiodatei hochladen")
