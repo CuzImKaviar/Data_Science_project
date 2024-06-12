@@ -8,6 +8,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 from joblib import dump, load
 
+folder_path = "Animal-SDataset"
 
 # Extrahiere Merkmale aus einer Audiodatei
 def extract_features(y, sr, n_mfcc=11, hop_length=1024, n_fft=4096):
@@ -97,6 +98,12 @@ def evaluate_model(classifier, scaler, X_test, y_test):
     return accuracy, f1, precision, recall, report
 
 # Laden des Modells und der Objekte
+# Lade des Modells und der Objekte
+# Lade des Modells und der Objekte
+classifier = None  # Initialize classifier variable
+accuracy = None  # Initialize accuracy variable
+
+# Lade des Modells und der Objekte
 model_dir = "models"
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
@@ -104,25 +111,41 @@ if not os.path.exists(model_dir):
 model_path = os.path.join(model_dir, "random_forest_model.joblib")
 scaler_path = os.path.join(model_dir, "scaler.joblib")
 label_encoder_path = os.path.join(model_dir, "label_encoder.joblib")
+X_test_path = os.path.join(model_dir, "X_test.npy")
+y_test_path = os.path.join(model_dir, "y_test.npy")
 
 if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists(label_encoder_path):
     classifier = load(model_path)
     scaler = load(scaler_path)
     label_encoder = load(label_encoder_path)
+    
+    # Try to load test data
+    try:
+        X_test = np.load(X_test_path)
+        y_test = np.load(y_test_path)
+        # Evaluate the model and get accuracy
+        accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)
+    except FileNotFoundError:
+        print("Test data not found. Retraining the model might be necessary.")
 else:
-    # Wenn die Modelldateien nicht vorhanden sind, trainiere das Modell neu
+    # Train a new model if none exists
     features, labels = load_data(folder_path, n_mfcc=11, hop_length=1024, n_fft=4096)
     label_encoder = LabelEncoder()
     labels_encoded = label_encoder.fit_transform(labels)
     X_train, X_test, y_train, y_test = train_test_split(features, labels_encoded, test_size=0.2, random_state=42)
     classifier, scaler = train_classifier(X_train, y_train)
-    # Speichern des trainierten Modells und der Objekte
+    # Save the trained model and objects
     dump(classifier, model_path)
     dump(scaler, scaler_path)
     dump(label_encoder, label_encoder_path)
+    np.save(X_test_path, X_test)
+    np.save(y_test_path, y_test)
+    # Evaluate the newly trained model and get accuracy
+    accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)
 
 # Streamlit-Anwendung
 def main():
+    global classifier  # Use the global classifier variable
     st.title("Tierstimmen-Erkennung")
     uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav"], key="file_uploader")
 
@@ -131,10 +154,18 @@ def main():
 
         if st.button("Erkenne Tierstimme"):
             try:
-                predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
-                st.write("Erkannte Tierstimme:", predicted_class)
+                if classifier is None:
+                    st.error("Das Modell wurde nicht geladen.")
+                else:
+                    predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
+                    st.write("Erkannte Tierstimme:", predicted_class)
             except Exception as e:
                 st.error("Fehler beim Erkennen der Tierstimme: {}".format(e))
+    
+    # Display accuracy if available
+    if accuracy is not None:
+        st.sidebar.markdown("**Modellgenauigkeit:**")
+        st.sidebar.write(f"{accuracy * 100:.2f}%")
 
 if __name__ == "__main__":
     main()
