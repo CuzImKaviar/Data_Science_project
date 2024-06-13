@@ -11,36 +11,52 @@ from joblib import dump, load
 folder_path = "Animal-SDataset"
 
 # Extrahiere Merkmale aus einer Audiodatei
-def extract_features(y, sr, n_mfcc=11, hop_length=1024, n_fft=4096):
+def extract_features(y, sr, n_mfcc=20, hop_length=1024, n_fft=4096):
     try:
+        # MFCCs
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, hop_length=hop_length, n_fft=n_fft)
-        chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
-        mel = librosa.feature.melspectrogram(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
-        zcr = librosa.feature.zero_crossing_rate(y=y)
-        
         mfccs = np.mean(mfccs, axis=1)
+
+        # Chroma
+        chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
         chroma = np.mean(chroma, axis=1)
+
+        # Mel Spectrogram
+        mel = librosa.feature.melspectrogram(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
         mel = np.mean(mel, axis=1)
+
+        # Zero Crossing Rate
+        zcr = librosa.feature.zero_crossing_rate(y)
         zcr = np.mean(zcr, axis=1)
-        
-        features = np.concatenate((mfccs, chroma, mel, zcr))
+
+        # Spectral Contrast
+        spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
+        spectral_contrast = np.mean(spectral_contrast, axis=1)
+
+        # Concatenate features
+        features = np.concatenate((mfccs, chroma, mel, zcr, spectral_contrast))
         return features
     except Exception as e:
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
 
-# Datenaugmentation durch Pitch-Shifting und Time-Stretching
+
 def augment_audio(y, sr):
+    augmented_audios = [y]
     try:
-        pitch_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=2)
-        time_stretched = librosa.effects.time_stretch(y, rate=1.1)
-        return [y, pitch_shifted, time_stretched]
+        # Original
+        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=2))  # Pitch Shift up
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))  # Time Stretch
+        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))  # Add noise
+        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=-2))  # Pitch Shift down
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=0.9))  # Time Compress
     except Exception as e:
         print(f"Fehler bei der Datenaugmentation: {e}")
-        return [y]
+    return augmented_audios
+
 
 # Lade die Audiodateien und extrahiere Merkmale
-def load_data(folder_path, n_mfcc=11, hop_length=1024, n_fft=4096):
+def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     features = []
     labels = []
     for root, dirs, files in os.walk(folder_path):
@@ -61,6 +77,7 @@ def load_data(folder_path, n_mfcc=11, hop_length=1024, n_fft=4096):
                 except Exception as e:
                     print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
     return np.array(features), np.array(labels)
+
 
 # Trainiere den Klassifikator
 def train_classifier(features, labels):
