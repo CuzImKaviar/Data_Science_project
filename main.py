@@ -115,8 +115,6 @@ def evaluate_model(classifier, scaler, X_test, y_test):
     return accuracy, f1, precision, recall, report
 
 # Laden des Modells und der Objekte
-# Lade des Modells und der Objekte
-# Lade des Modells und der Objekte
 classifier = None  # Initialize classifier variable
 accuracy = None  # Initialize accuracy variable
 
