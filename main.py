@@ -11,7 +11,7 @@ from joblib import dump, load
 folder_path = "Animal-SDataset"
 
 # Extrahiere Merkmale aus einer Audiodatei
-def extract_features(y, sr, n_mfcc=20, hop_length=1024, n_fft=4096):
+def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     try:
         # MFCCs
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, hop_length=hop_length, n_fft=n_fft)
