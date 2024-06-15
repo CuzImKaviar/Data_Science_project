@@ -7,55 +7,58 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 from joblib import dump, load
+import soundfile as sf
+import sounddevice as sd
 
 folder_path = "Animal-SDataset"
 
-# Extrahiere Merkmale aus einer Audiodatei
+def record_audio(filename='recorded_audio.wav', duration=5):
+    try:
+        print("Bitte sprechen Sie jetzt...")
+        myrecording = sd.rec(int(duration * 44100), samplerate=44100, channels=2)
+        sd.wait()
+        sf.write(filename, myrecording, 44100)
+        print(f"Aufnahme gespeichert als {filename}")
+        return filename
+    except Exception as e:
+        print(f"Fehler bei der Aufnahme: {e}")
+        return None
+
 def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     try:
-        # MFCCs
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, hop_length=hop_length, n_fft=n_fft)
         mfccs = np.mean(mfccs, axis=1)
 
-        # Chroma
         chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
         chroma = np.mean(chroma, axis=1)
 
-        # Mel Spectrogram
         mel = librosa.feature.melspectrogram(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
         mel = np.mean(mel, axis=1)
 
-        # Zero Crossing Rate
         zcr = librosa.feature.zero_crossing_rate(y)
         zcr = np.mean(zcr, axis=1)
 
-        # Spectral Contrast
         spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
         spectral_contrast = np.mean(spectral_contrast, axis=1)
 
-        # Concatenate features
         features = np.concatenate((mfccs, chroma, mel, zcr, spectral_contrast))
         return features
     except Exception as e:
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
 
-
 def augment_audio(y, sr):
     augmented_audios = [y]
     try:
-        # Original
-        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=2))  # Pitch Shift up
-        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))  # Time Stretch
-        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))  # Add noise
-        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=-2))  # Pitch Shift down
-        augmented_audios.append(librosa.effects.time_stretch(y, rate=0.9))  # Time Compress
+        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=2))
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))
+        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))
+        augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=-2))
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=0.9))
     except Exception as e:
         print(f"Fehler bei der Datenaugmentation: {e}")
     return augmented_audios
 
-
-# Lade die Audiodateien und extrahiere Merkmale
 def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     features = []
     labels = []
@@ -78,8 +81,6 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
                     print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
     return np.array(features), np.array(labels)
 
-
-# Trainiere den Klassifikator
 def train_classifier(features, labels):
     scaler = StandardScaler()
     features_scaled = scaler.fit_transform(features)
@@ -92,16 +93,18 @@ def train_classifier(features, labels):
     clf.fit(features_scaled, labels)
     return clf.best_estimator_, scaler
 
-# Klassifiziere eine Audiodatei
 def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096):
-    y, sr = librosa.load(audio_file)
-    features = extract_features(y, sr, n_mfcc, hop_length, n_fft)
-    features_scaled = scaler.transform([features])  # Skalieren der Features
-    predicted_label = classifier.predict(features_scaled)[0]
-    predicted_class = label_encoder.inverse_transform([predicted_label])[0]
-    return predicted_class
+    try:
+        y, sr = librosa.load(audio_file)
+        features = extract_features(y, sr, n_mfcc, hop_length, n_fft)
+        features_scaled = scaler.transform([features])
+        predicted_label = classifier.predict(features_scaled)[0]
+        predicted_class = label_encoder.inverse_transform([predicted_label])[0]
+        return predicted_class
+    except Exception as e:
+        print(f"Fehler bei der Klassifizierung der Audiodatei {audio_file}: {e}")
+        return None
 
-# Funktion zum automatisierten Testen des Modells
 def evaluate_model(classifier, scaler, X_test, y_test):
     X_test_scaled = scaler.transform(X_test)
     y_pred = classifier.predict(X_test_scaled)
@@ -114,11 +117,9 @@ def evaluate_model(classifier, scaler, X_test, y_test):
     
     return accuracy, f1, precision, recall, report
 
-# Laden des Modells und der Objekte
-classifier = None  # Initialize classifier variable
-accuracy = None  # Initialize accuracy variable
+classifier = None
+accuracy = None
 
-# Lade des Modells und der Objekte
 model_dir = "models"
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
@@ -134,50 +135,74 @@ if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists
     scaler = load(scaler_path)
     label_encoder = load(label_encoder_path)
     
-    # Try to load test data
     try:
         X_test = np.load(X_test_path)
         y_test = np.load(y_test_path)
-        # Evaluate the model and get accuracy
         accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)
     except FileNotFoundError:
-        print("Test data not found. Retraining the model might be necessary.")
+        print("Testdaten nicht gefunden. Das Modell muss möglicherweise neu trainiert werden.")
 else:
-    # Train a new model if none exists
     features, labels = load_data(folder_path, n_mfcc=11, hop_length=1024, n_fft=4096)
     label_encoder = LabelEncoder()
     labels_encoded = label_encoder.fit_transform(labels)
     X_train, X_test, y_train, y_test = train_test_split(features, labels_encoded, test_size=0.2, random_state=42)
     classifier, scaler = train_classifier(X_train, y_train)
-    # Save the trained model and objects
     dump(classifier, model_path)
     dump(scaler, scaler_path)
     dump(label_encoder, label_encoder_path)
     np.save(X_test_path, X_test)
     np.save(y_test_path, y_test)
-    # Evaluate the newly trained model and get accuracy
     accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)
 
-# Streamlit-Anwendung
 def main():
-    global classifier  # Use the global classifier variable
+    global classifier
+    if 'audio_recorded' not in st.session_state:
+        st.session_state.audio_recorded = False
+        st.session_state.audio_filename = None
+
     st.title("Tierstimmen-Erkennung")
-    uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav"], key="file_uploader")
+    st.write("Wählen Sie eine der folgenden Optionen:")
 
-    if uploaded_file is not None:
-        st.audio(uploaded_file, format='audio/wav')
+    option = st.selectbox('', ('Audio hochladen', 'Audio aufnehmen'))
 
-        if st.button("Erkenne Tierstimme"):
-            try:
-                if classifier is None:
-                    st.error("Das Modell wurde nicht geladen.")
-                else:
-                    predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
-                    st.write("Erkannte Tierstimme:", predicted_class)
-            except Exception as e:
-                st.error("Fehler beim Erkennen der Tierstimme: {}".format(e))
-    
-    # Display accuracy if available
+    if option == 'Audio hochladen':
+        uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav"], key="file_uploader")
+        if uploaded_file is not None:
+            st.audio(uploaded_file, format='audio/wav')
+            if st.button("Erkenne Tierstimme"):
+                try:
+                    if classifier is None:
+                        st.error("Das Modell wurde nicht geladen.")
+                    else:
+                        predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
+                        if predicted_class is not None:
+                            st.write("Erkannte Tierstimme:", predicted_class)
+                        else:
+                            st.error("Fehler beim Erkennen der Tierstimme.")
+                except Exception as e:
+                    st.error("Fehler beim Erkennen der Tierstimme: {}".format(e))
+
+    elif option == 'Audio aufnehmen':
+        duration = st.slider("Dauer der Aufnahme (in Sekunden)", min_value=1, max_value=10, value=5)
+        if st.button("Aufnahme starten"):
+            audio_filename = record_audio(duration=duration)
+            if audio_filename:
+                st.session_state.audio_recorded = True
+                st.session_state.audio_filename = audio_filename
+                st.success("Aufnahme erfolgreich!")
+                st.audio(audio_filename, format='audio/wav')
+
+        if st.session_state.audio_recorded:
+            if st.button("Erkenne Tierstimme"):
+                try:
+                    predicted_class = classify_audio(st.session_state.audio_filename, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
+                    if predicted_class is not None:
+                        st.write("Erkannte Tierstimme:", predicted_class)
+                    else:
+                        st.error("Fehler beim Erkennen der Tierstimme.")
+                except Exception as e:
+                    st.error("Fehler beim Erkennen der Tierstimme: {}".format(e))
+
     if accuracy is not None:
         st.sidebar.markdown("**Modellgenauigkeit:**")
         st.sidebar.write(f"{accuracy * 100:.2f}%")
