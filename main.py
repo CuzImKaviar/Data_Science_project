@@ -24,8 +24,26 @@ def record_audio(filename='recorded_audio.wav', duration=5):
         print(f"Fehler bei der Aufnahme: {e}")
         return None
 
+def preprocess_audio(y, sr):
+    try:
+        # Hochpassfilter
+        y = librosa.effects.preemphasis(y)
+        
+        # Tiefpassfilter (entfernt oder alternative Methode verwenden)
+        # y = librosa.effects.low_pass_filter(y, sr, rolloff=0.99)
+        
+        # Spectral Gating für Rauschunterdrückung
+        y = librosa.effects.remix(y, intervals=librosa.effects.split(y, top_db=20))
+        
+        return y
+    except Exception as e:
+        print(f"Fehler bei der Vorverarbeitung: {e}")
+        return y
+
 def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     try:
+        y = preprocess_audio(y, sr)
+        
         mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc, hop_length=hop_length, n_fft=n_fft)
         mfccs = np.mean(mfccs, axis=1)
 
@@ -38,7 +56,8 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
         zcr = librosa.feature.zero_crossing_rate(y)
         zcr = np.mean(zcr, axis=1)
 
-        spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft)
+        # Anpassung des spektralen Kontrasts
+        spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft, n_bands=6, fmin=20.0)
         spectral_contrast = np.mean(spectral_contrast, axis=1)
 
         features = np.concatenate((mfccs, chroma, mel, zcr, spectral_contrast))
@@ -46,6 +65,7 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     except Exception as e:
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
+
 
 def augment_audio(y, sr):
     augmented_audios = [y]
@@ -64,11 +84,11 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     labels = []
     for root, dirs, files in os.walk(folder_path):
         for file in files:
-            if file.endswith(".wav"):
+            if file.endswith(".wav") or file.endswith(".ogg"):
                 file_path = os.path.join(root, file)
                 label = os.path.basename(root)
                 try:
-                    y, sr = librosa.load(file_path)
+                    y, sr = librosa.load(file_path, sr=None)  # sr=None ensures the original sampling rate is used
                     augmented_audios = augment_audio(y, sr)
                     for audio in augmented_audios:
                         feature = extract_features(audio, sr, n_mfcc, hop_length, n_fft)
@@ -80,6 +100,9 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
                 except Exception as e:
                     print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
     return np.array(features), np.array(labels)
+
+
+
 
 def train_classifier(features, labels):
     scaler = StandardScaler()
@@ -95,7 +118,7 @@ def train_classifier(features, labels):
 
 def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096):
     try:
-        y, sr = librosa.load(audio_file)
+        y, sr = librosa.load(audio_file, sr=None)  # sr=None ensures the original sampling rate is used
         features = extract_features(y, sr, n_mfcc, hop_length, n_fft)
         features_scaled = scaler.transform([features])
         predicted_label = classifier.predict(features_scaled)[0]
@@ -104,6 +127,7 @@ def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop
     except Exception as e:
         print(f"Fehler bei der Klassifizierung der Audiodatei {audio_file}: {e}")
         return None
+
 
 def evaluate_model(classifier, scaler, X_test, y_test):
     X_test_scaled = scaler.transform(X_test)
@@ -166,9 +190,9 @@ def main():
     option = st.selectbox('', ('Audio hochladen', 'Audio aufnehmen'))
 
     if option == 'Audio hochladen':
-        uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav"], key="file_uploader")
+        uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav", "ogg"], key="file_uploader")
         if uploaded_file is not None:
-            st.audio(uploaded_file, format='audio/wav')
+            st.audio(uploaded_file, format='audio/wav' if uploaded_file.name.endswith('.wav') else 'audio/ogg')
             if st.button("Erkenne Tierstimme"):
                 try:
                     if classifier is None:
