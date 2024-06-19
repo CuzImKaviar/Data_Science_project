@@ -9,13 +9,14 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score, pre
 from joblib import dump, load
 import soundfile as sf
 import sounddevice as sd
+from plots import plot_waveform_and_spectrogram, plot_mfccs, plot_confusion_matrix
 
 folder_path = "Animal-SDataset"
 
 def record_audio(filename='recorded_audio.wav', duration=5, samplerate_=48000):
     try:
         print("Bitte sprechen Sie jetzt...")
-        myrecording = sd.rec(int(duration * samplerate_), samplerate = samplerate_, channels=2)
+        myrecording = sd.rec(int(duration * samplerate_), samplerate=samplerate_, channels=2)
         sd.wait()
         sf.write(filename, myrecording, samplerate_)
         print(f"Aufnahme gespeichert als {filename}")
@@ -26,20 +27,12 @@ def record_audio(filename='recorded_audio.wav', duration=5, samplerate_=48000):
 
 def preprocess_audio(y, sr):
     try:
-        # Hochpassfilter
         y = librosa.effects.preemphasis(y)
-        
-        # Tiefpassfilter (entfernt oder alternative Methode verwenden)
-        # y = librosa.effects.low_pass_filter(y, sr, rolloff=0.99)
-        
-        # Spectral Gating für Rauschunterdrückung
         y = librosa.effects.remix(y, intervals=librosa.effects.split(y, top_db=20))
-        
         return y
     except Exception as e:
         print(f"Fehler bei der Vorverarbeitung: {e}")
         return y
-
 
 def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     try:
@@ -57,7 +50,6 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
         zcr = librosa.feature.zero_crossing_rate(y)
         zcr = np.mean(zcr, axis=1)
 
-        # Anpassung des spektralen Kontrasts
         spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, hop_length=hop_length, n_fft=n_fft, n_bands=6, fmin=20.0)
         spectral_contrast = np.mean(spectral_contrast, axis=1)
 
@@ -66,7 +58,6 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     except Exception as e:
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
-
 
 def augment_audio(y, sr):
     augmented_audios = [y]
@@ -89,7 +80,7 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
                 file_path = os.path.join(root, file)
                 label = os.path.basename(root)
                 try:
-                    y, sr = librosa.load(file_path, sr=None)  # sr=None ensures the original sampling rate is used
+                    y, sr = librosa.load(file_path, sr=None)
                     augmented_audios = augment_audio(y, sr)
                     for audio in augmented_audios:
                         feature = extract_features(audio, sr, n_mfcc, hop_length, n_fft)
@@ -102,14 +93,10 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
                     print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
     return np.array(features), np.array(labels)
 
-
-
-
 def train_classifier(features, labels):
     scaler = StandardScaler()
     features_scaled = scaler.fit_transform(features)
 
-    # Erweiterter Parameterraum für die GridSearch
     param_grid = {
         'n_estimators': [100, 200, 300, 400, 500],
         'max_depth': [None, 10, 15, 20, 25, 30],
@@ -124,10 +111,9 @@ def train_classifier(features, labels):
     
     return clf.best_estimator_, scaler
 
-
 def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096):
     try:
-        y, sr = librosa.load(audio_file, sr=None)  # sr=None ensures the original sampling rate is used
+        y, sr = librosa.load(audio_file, sr=None)
         features = extract_features(y, sr, n_mfcc, hop_length, n_fft)
         features_scaled = scaler.transform([features])
         predicted_label = classifier.predict(features_scaled)[0]
@@ -136,7 +122,6 @@ def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop
     except Exception as e:
         print(f"Fehler bei der Klassifizierung der Audiodatei {audio_file}: {e}")
         return None
-
 
 def evaluate_model(classifier, scaler, X_test, y_test):
     X_test_scaled = scaler.transform(X_test)
@@ -201,6 +186,9 @@ def main():
     if option == 'Audio hochladen':
         uploaded_file = st.file_uploader("Bitte lade eine Audiodatei hoch", type=["wav", "ogg"], key="file_uploader")
         if uploaded_file is not None:
+            y, sr = librosa.load(uploaded_file)
+            plot_waveform_and_spectrogram(y, sr)
+            plot_mfccs(y, sr, n_mfcc=20)
             st.audio(uploaded_file, format='audio/wav' if uploaded_file.name.endswith('.wav') else 'audio/ogg')
             if st.button("Erkenne Tierstimme"):
                 try:
@@ -221,10 +209,12 @@ def main():
         samplerate_mic_ = st.number_input("Samplerate des Mikrofons in kHz", min_value=8.0, max_value=48.0, value=48.0, step=0.1)
         samplerate_mic = int(samplerate_mic_ * 1000)
 
-
         if st.button("Aufnahme starten"):
             audio_filename = record_audio(duration=duration, samplerate_=samplerate_mic)
             if audio_filename:
+                y, sr = librosa.load(audio_filename)
+                plot_waveform_and_spectrogram(y, sr)
+                plot_mfccs(y, sr, n_mfcc=20)
                 st.session_state.audio_recorded = True
                 st.session_state.audio_filename = audio_filename
                 st.success("Aufnahme erfolgreich!")
@@ -244,6 +234,16 @@ def main():
     if accuracy is not None:
         st.sidebar.markdown("**Modellgenauigkeit:**")
         st.sidebar.write(f"{accuracy * 100:.2f}%")
+
+        y_test = np.load(y_test_path)
+        X_test = np.load(X_test_path)
+        y_pred = classifier.predict(scaler.transform(X_test))
+        
+        # Sicherstellen, dass y_test und y_pred gleiche Typen und Werte haben
+        if isinstance(y_test[0], str):
+            y_test = label_encoder.transform(y_test)
+        
+        plot_confusion_matrix(y_test, y_pred, label_encoder.classes_)
 
 if __name__ == "__main__":
     main()
