@@ -218,10 +218,12 @@ def main():
     elif option == 'Audio aufnehmen':
         duration = st.slider("Dauer der Aufnahme (in Sekunden)", min_value=1, max_value=10, value=5)
 
+        samplerate_mic_ = st.number_input("Samplerate des Mikrofon in kHz", min_value=8.0, max_value=48.0, value=48.0, step=0.1)
+        samplerate_mic = int(samplerate_mic_ * 1000)
 
 
         if st.button("Aufnahme starten"):
-            audio_filename = record_audio(duration=duration)
+            audio_filename = record_audio(duration=duration, samplerate_=samplerate_mic)
             if audio_filename:
                 st.session_state.audio_recorded = True
                 st.session_state.audio_filename = audio_filename
