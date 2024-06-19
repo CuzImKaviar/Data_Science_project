@@ -3,7 +3,6 @@ import librosa.display
 import numpy as np
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-# Beispiel für das Plotten der Wellenform und des Spektrogramms
 def plot_waveform_and_spectrogram(y, sr):
     plt.figure(figsize=(12, 6))
 
