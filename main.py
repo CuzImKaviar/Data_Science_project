@@ -12,12 +12,12 @@ import sounddevice as sd
 
 folder_path = "Animal-SDataset"
 
-def record_audio(filename='recorded_audio.wav', duration=5):
+def record_audio(filename='recorded_audio.wav', duration=5, samplerate_=48000):
     try:
         print("Bitte sprechen Sie jetzt...")
-        myrecording = sd.rec(int(duration * 44100), samplerate=44100, channels=2)
+        myrecording = sd.rec(int(duration * samplerate_), samplerate = samplerate_, channels=2)
         sd.wait()
-        sf.write(filename, myrecording, 44100)
+        sf.write(filename, myrecording, samplerate_)
         print(f"Aufnahme gespeichert als {filename}")
         return filename
     except Exception as e:
@@ -39,6 +39,7 @@ def preprocess_audio(y, sr):
     except Exception as e:
         print(f"Fehler bei der Vorverarbeitung: {e}")
         return y
+
 
 def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
     try:
@@ -216,6 +217,9 @@ def main():
 
     elif option == 'Audio aufnehmen':
         duration = st.slider("Dauer der Aufnahme (in Sekunden)", min_value=1, max_value=10, value=5)
+
+
+
         if st.button("Aufnahme starten"):
             audio_filename = record_audio(duration=duration)
             if audio_filename:
