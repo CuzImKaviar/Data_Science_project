@@ -107,14 +107,22 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
 def train_classifier(features, labels):
     scaler = StandardScaler()
     features_scaled = scaler.fit_transform(features)
+
+    # Erweiterter Parameterraum für die GridSearch
     param_grid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [None, 10, 20, 30],
-        'min_samples_split': [2, 5, 10]
+        'n_estimators': [100, 200, 300, 400, 500],
+        'max_depth': [None, 10, 15, 20, 25, 30],
+        'min_samples_split': [2, 3, 4, 5, 6, 10]
     }
+
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3)
     clf.fit(features_scaled, labels)
+    
+    print("Beste Parameterkombination: ", clf.best_params_)
+    print("Beste Genauigkeit: ", clf.best_score_)
+    
     return clf.best_estimator_, scaler
+
 
 def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096):
     try:
