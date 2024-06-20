@@ -111,9 +111,9 @@ def train_classifier(features, labels):
 
     # Erweiterter Parameterraum für die GridSearch
     param_grid = {
-        'n_estimators': [100, 200, 300, 400, 500],
-        'max_depth': [None, 10, 15, 20, 25, 30],
-        'min_samples_split': [2, 3, 4, 5, 6, 10]
+        'n_estimators': [100, 200, 300, 400],
+        'max_depth': [None, 10, 15, 20, 25],
+        'min_samples_split': [2, 3, 4, 5, 6]
     }
 
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3)
@@ -185,7 +185,7 @@ else:
     dump(label_encoder, label_encoder_path)
     np.save(X_test_path, X_test)
     np.save(y_test_path, y_test)
-    accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)
+    accuracy, _, _, _, _ = evaluate_model(classifier, scaler, X_test, y_test)## hier kann mehr info extrahiert werden für geneuere Auswertung des Modells
 
 def main():
     global classifier
