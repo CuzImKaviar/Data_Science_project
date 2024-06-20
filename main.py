@@ -113,7 +113,7 @@ def train_classifier(features, labels):
     param_grid = {
         'n_estimators': [100, 200, 300, 400],
         'max_depth': [None, 10, 15, 20, 25],
-        'min_samples_split': [2, 3, 4, 5, 6]
+        'min_samples_split': [3, 4, 5, 6, 7]
     }
 
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3)
