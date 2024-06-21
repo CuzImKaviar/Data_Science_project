@@ -65,10 +65,33 @@ def augment_audio(y, sr):
     augmented_audios = [y]
     try:
         augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=2))
-        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))
-        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))
         augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=-2))
+
+        # Zeitstreckung
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))
         augmented_audios.append(librosa.effects.time_stretch(y, rate=0.9))
+
+        # Geschwindigkeitsänderung (Speed Perturbation)
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=0.95))
+        augmented_audios.append(librosa.effects.time_stretch(y, rate=1.05))
+
+        # Rauschbehaftung
+        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))
+
+        # Änderungen der Raumklangcharakteristik (z.B. Hall/Echo)
+        # Hier ein Beispiel mit Pre-Emphasis und Trimmen
+        augmented_audios.append(librosa.effects.preemphasis(y))
+        augmented_audios.append(librosa.effects.trim(y)[0])
+
+        # Veränderungen der Dynamik
+        augmented_audios.append(y * (1 + 0.2 * np.random.randn(len(y))))
+
+        # Sie können auch Kombinationen von verschiedenen Techniken verwenden
+        # Beispiel: Kombination von Tonhöhenverschiebung, Zeitstreckung und Rauschbehaftung
+        augmented_audios.append(librosa.effects.pitch_shift(librosa.effects.time_stretch(y, rate=1.1), sr=sr, n_steps=1))
+        augmented_audios.append(librosa.effects.pitch_shift(librosa.effects.time_stretch(y, rate=0.9), sr=sr, n_steps=-1) + 0.005 * np.random.randn(len(y)))
+
+        # Augmentierte Daten sind nun in der Liste augmented_audios gespeichert
     except Exception as e:
         print(f"Fehler bei der Datenaugmentation: {e}")
     return augmented_audios
