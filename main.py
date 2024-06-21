@@ -5,11 +5,13 @@ import streamlit as st
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score, confusion_matrix
 from joblib import dump, load
 import soundfile as sf
 import sounddevice as sd
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 folder_path = "Animal-SDataset"
 
@@ -145,6 +147,15 @@ def evaluate_model(classifier, scaler, X_test, y_test):
     
     return accuracy, f1, precision, recall, report
 
+def plot_confusion_matrix(y_test, y_pred, labels):
+    cm = confusion_matrix(y_test, y_pred)
+    fig, ax = plt.subplots(figsize=(10, 10))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels, ax=ax)
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.title('Confusion Matrix')
+    st.pyplot(fig)
+
 classifier = None
 accuracy = None
 
@@ -242,6 +253,10 @@ def main():
     if accuracy is not None:
         st.sidebar.markdown("**Modellgenauigkeit:**")
         st.sidebar.write(f"{accuracy * 100:.2f}%")
+        
+        if st.sidebar.button("Confusion Matrix anzeigen"):
+            y_pred = classifier.predict(scaler.transform(X_test))
+            plot_confusion_matrix(y_test, y_pred, label_encoder.classes_)
 
 if __name__ == "__main__":
     main()
