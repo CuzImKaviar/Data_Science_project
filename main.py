@@ -61,9 +61,13 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
 
+import librosa
+import numpy as np
+
 def augment_audio(y, sr):
     augmented_audios = [y]
     try:
+        # Tonhöhenverschiebung
         augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=2))
         augmented_audios.append(librosa.effects.pitch_shift(y, sr=sr, n_steps=-2))
 
@@ -78,23 +82,31 @@ def augment_audio(y, sr):
         # Rauschbehaftung
         augmented_audios.append(y + 0.005 * np.random.randn(len(y)))
 
-        # Änderungen der Raumklangcharakteristik (z.B. Hall/Echo)
-        # Hier ein Beispiel mit Pre-Emphasis und Trimmen
+        # Preemphasis
         augmented_audios.append(librosa.effects.preemphasis(y))
-        augmented_audios.append(librosa.effects.trim(y)[0])
+
+        # Trimmen
+        trimmed_audio = librosa.effects.trim(y)[0]
+        augmented_audios.append(trimmed_audio)
 
         # Veränderungen der Dynamik
         augmented_audios.append(y * (1 + 0.2 * np.random.randn(len(y))))
 
-        # Sie können auch Kombinationen von verschiedenen Techniken verwenden
-        # Beispiel: Kombination von Tonhöhenverschiebung, Zeitstreckung und Rauschbehaftung
-        augmented_audios.append(librosa.effects.pitch_shift(librosa.effects.time_stretch(y, rate=1.1), sr=sr, n_steps=1))
-        augmented_audios.append(librosa.effects.pitch_shift(librosa.effects.time_stretch(y, rate=0.9), sr=sr, n_steps=-1) + 0.005 * np.random.randn(len(y)))
+        # Kombination von Tonhöhenverschiebung, Zeitstreckung und Rauschbehaftung
+        augmented_audio_1 = librosa.effects.time_stretch(y, rate=1.1)
+        augmented_audio_1 = librosa.effects.pitch_shift(augmented_audio_1, sr=sr, n_steps=1)
+        augmented_audios.append(augmented_audio_1)
 
-        # Augmentierte Daten sind nun in der Liste augmented_audios gespeichert
+        augmented_audio_2 = librosa.effects.time_stretch(y, rate=0.9)
+        augmented_audio_2 = librosa.effects.pitch_shift(augmented_audio_2, sr=sr, n_steps=-1)
+        augmented_audio_2 += 0.005 * np.random.randn(len(augmented_audio_2))
+        augmented_audios.append(augmented_audio_2)
+
     except Exception as e:
         print(f"Fehler bei der Datenaugmentation: {e}")
+
     return augmented_audios
+
 
 def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     features = []
