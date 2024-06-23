@@ -1,0 +1,5 @@
+https://github.com/zebular13/ChickenLanguageDataset/tree/master
+https://www.kaggle.com/datasets/caoofficial/animal-sounds
+https://www.kaggle.com/datasets/ouaraskhelilrafik/tp-02-audio
+https://www.kaggle.com/datasets/pcaackdataset/15-sec-splitted-chicken-distress-audio
+https://www.kaggle.com/datasets/pcaackdataset/15-sec-splitted-chicken-egg-laying-audio
