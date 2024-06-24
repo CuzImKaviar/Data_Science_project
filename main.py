@@ -111,13 +111,13 @@ def augment_audio(y, sr):
 def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     features = []
     labels = []
-    file_list = [os.path.join(root, file) for root, _, files in os.walk(folder_path) for file in files if file.endswith(".wav") or file.endswith(".ogg")]
+    file_list = [os.path.join(root, file) for root, _, files in os.walk(folder_path) for file in files if file.endswith(".wav") or file.endswith(".ogg") or file.endswith(".mp3")]
     progress_bar = st.progress(0)
     
     for i, file_path in enumerate(tqdm(file_list, desc="Daten werden geladen")):
         label = os.path.basename(os.path.dirname(file_path))
         try:
-            y, sr = librosa.load(file_path, sr=None)
+            y, sr = librosa.load(file_path, sr=None)  # Laden der Datei mit automatischer Abtastrate-Erkennung
             augmented_audios = augment_audio(y, sr)
             for audio in augmented_audios:
                 feature = extract_features(audio, sr, n_mfcc, hop_length, n_fft)
@@ -132,6 +132,7 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
     
     progress_bar.empty()
     return np.array(features), np.array(labels)
+
 
 def train_classifier(features, labels):
     scaler = StandardScaler()
@@ -208,7 +209,7 @@ if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists
     classifier = load(model_path)
     scaler = load(scaler_path)
     label_encoder = load(label_encoder_path)
-    
+     
     try:
         X_test = np.load(X_test_path)
         y_test = np.load(y_test_path)
