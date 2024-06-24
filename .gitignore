@@ -164,4 +164,8 @@ cython_debug/
 
 
 
-/models/*
+/models/label_encoder.joblib
+/models/random_forest_model.joblib
+/models/scaler.joblib
+/models/X_test.npy
+/models/y_test.npy
