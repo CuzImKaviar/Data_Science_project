@@ -4,7 +4,10 @@ https://www.kaggle.com/datasets/ouaraskhelilrafik/tp-02-audio
 https://www.kaggle.com/datasets/pcaackdataset/15-sec-splitted-chicken-distress-audio
 https://www.kaggle.com/datasets/pcaackdataset/15-sec-splitted-chicken-egg-laying-audio
 https://www.kaggle.com/datasets/mariotsaberlin/animal-sound-archive-berlin
-
-
 https://universal-soundbank.com/en/cows.htm
+https://universal-soundbank.com/en/sheeps.htm
+https://universal-soundbank.com/en/frogs.htm
+https://universal-soundbank.com/en/ducks.htm
+https://universal-soundbank.com/en/pigs.htm
+
 https://datadryad.org/stash/dataset/doi:10.5061/dryad.221mq23
