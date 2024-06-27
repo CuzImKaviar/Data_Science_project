@@ -1,28 +1,27 @@
 from pydub import AudioSegment
 import os
 
-def split_audio(file_path):
-    # Lade die Audiodatei
-    audio = AudioSegment.from_file(file_path)
-    
-    # Berechne die Mitte der Audiodatei
-    mid_point = len(audio) // 2
-    
-    # Teile die Audiodatei in zwei Hälften
-    first_half = audio[:mid_point]
-    second_half = audio[mid_point:]
-    
-    # Erstelle die Dateinamen für die beiden Hälften
-    base_name, ext = os.path.splitext(file_path)
-    first_half_file = f"{base_name}_first_half{ext}"
-    second_half_file = f"{base_name}_second_half{ext}"
-    
-    # Speichere die beiden Hälften
-    first_half.export(first_half_file, format=ext[1:])  # Entferne das Punktzeichen vor der Erweiterung
-    second_half.export(second_half_file, format=ext[1:])
-    
-    print(f"Erste Hälfte gespeichert als: {first_half_file}")
-    print(f"Zweite Hälfte gespeichert als: {second_half_file}")
+def split_audio_into_parts(file_path, num_parts=5):
+    try:
+        # Lade die Audiodatei
+        audio = AudioSegment.from_file(file_path)
+        
+        # Berechne die Länge jedes Teils
+        part_length = len(audio) // num_parts
+        
+        # Teile die Audiodatei in num_parts Teile
+        parts = [audio[i * part_length:(i + 1) * part_length] for i in range(num_parts)]
+        
+        # Erstelle die Dateinamen für die Teile
+        base_name, ext = os.path.splitext(file_path)
+        
+        for i, part in enumerate(parts):
+            part_file = f"{base_name}_part{i+1}{ext}"
+            part.export(part_file, format=ext[1:])  # Entferne das Punktzeichen vor der Erweiterung
+            print(f"Teil {i+1} gespeichert als: {part_file}")
+        
+    except Exception as e:
+        print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
 
 def process_folder(folder_path):
     # Gehe durch alle Dateien im Ordner
@@ -31,10 +30,7 @@ def process_folder(folder_path):
         
         # Prüfe, ob es sich um eine Datei handelt
         if os.path.isfile(file_path):
-            try:
-                split_audio(file_path)
-            except Exception as e:
-                print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
+            split_audio_into_parts(file_path, num_parts=5)
 
 # Beispielverwendung
 folder_path = "to_big_audio"
