@@ -1,7 +1,10 @@
 from pydub import AudioSegment
 import os
 
-def split_audio_into_parts(file_path, num_parts=5):
+# Globale Variable für die Anzahl der Teile
+NUM_PARTS = 2
+
+def split_audio_into_parts(file_path, num_parts):
     try:
         # Lade die Audiodatei
         audio = AudioSegment.from_file(file_path)
@@ -20,18 +23,22 @@ def split_audio_into_parts(file_path, num_parts=5):
             part.export(part_file, format=ext[1:])  # Entferne das Punktzeichen vor der Erweiterung
             print(f"Teil {i+1} gespeichert als: {part_file}")
         
+        # Lösche die ursprüngliche Datei
+        os.remove(file_path)
+        print(f"Ursprüngliche Datei gelöscht: {file_path}")
+        
     except Exception as e:
         print(f"Fehler beim Verarbeiten der Datei {file_path}: {e}")
 
-def process_folder(folder_path):
+def process_folder(folder_path, num_parts):
     # Gehe durch alle Dateien im Ordner
     for file_name in os.listdir(folder_path):
         file_path = os.path.join(folder_path, file_name)
         
         # Prüfe, ob es sich um eine Datei handelt
         if os.path.isfile(file_path):
-            split_audio_into_parts(file_path, num_parts=5)
+            split_audio_into_parts(file_path, num_parts)
 
 # Beispielverwendung
 folder_path = "to_big_audio"
-process_folder(folder_path)
+process_folder(folder_path, NUM_PARTS)
