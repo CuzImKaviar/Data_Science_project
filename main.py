@@ -61,8 +61,6 @@ def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
         print(f"Fehler beim Extrahieren der Merkmale: {e}")
         return None
 
-import librosa
-import numpy as np
 
 def augment_audio(y, sr):
     augmented_audios = [y]
