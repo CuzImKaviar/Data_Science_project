@@ -15,6 +15,10 @@ import seaborn as sns
 
 folder_path = "Animal-SDataset"
 
+n_mfcc = 25
+hop_length = 512
+n_fft = 2048
+
 def record_audio(filename='recorded_audio.wav', duration=5, samplerate_=48000):
     try:
         print("Bitte sprechen Sie jetzt...")
@@ -36,7 +40,7 @@ def preprocess_audio(y, sr):
         print(f"Fehler bei der Vorverarbeitung: {e}")
         return y
 
-def extract_features(y, sr, n_mfcc=25, hop_length=1024, n_fft=4096):
+def extract_features(y, sr):
     try:
         y = preprocess_audio(y, sr)
         
@@ -78,7 +82,7 @@ def augment_audio(y, sr):
         augmented_audios.append(librosa.effects.time_stretch(y, rate=1.05))
 
         # Rauschbehaftung
-        augmented_audios.append(y + 0.005 * np.random.randn(len(y)))
+        augmented_audios.append(y + 0.010 * np.random.randn(len(y)))
 
         # Preemphasis
         augmented_audios.append(librosa.effects.preemphasis(y))
@@ -106,7 +110,7 @@ def augment_audio(y, sr):
     return augmented_audios
 
 
-def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
+def load_data(folder_path):
     features = []
     labels = []
     file_list = [os.path.join(root, file) for root, _, files in os.walk(folder_path) for file in files if file.endswith(".wav") or file.endswith(".ogg") or file.endswith(".mp3")]
@@ -118,7 +122,7 @@ def load_data(folder_path, n_mfcc=20, hop_length=1024, n_fft=4096):
             y, sr = librosa.load(file_path, sr=None)  # Laden der Datei mit automatischer Abtastrate-Erkennung
             augmented_audios = augment_audio(y, sr)
             for audio in augmented_audios:
-                feature = extract_features(audio, sr, n_mfcc, hop_length, n_fft)
+                feature = extract_features(audio, sr)
                 if feature is not None:
                     features.append(feature)
                     labels.append(label)
@@ -137,9 +141,9 @@ def train_classifier(features, labels):
     features_scaled = scaler.fit_transform(features)
     
     param_grid = {
-        'n_estimators': [100, 200, 300, 400],
-        'max_depth': [None, 10, 15, 20, 25],
-        'min_samples_split': [3, 4, 5, 6, 7]
+        'n_estimators': [100, 200, 300, 400, 500],
+        'max_depth': [None, 10, 15, 20, 25, 35],
+        'min_samples_split': [2, 4, 6, 8, 10]
     }
     
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, verbose=10, n_jobs=-1)
@@ -157,10 +161,10 @@ def train_classifier(features, labels):
     
     return clf.best_estimator_, scaler
 
-def classify_audio(audio_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096):
+def classify_audio(audio_file, classifier, scaler, label_encoder):
     try:
         y, sr = librosa.load(audio_file, sr=None)
-        features = extract_features(y, sr, n_mfcc, hop_length, n_fft)
+        features = extract_features(y, sr)
         features_scaled = scaler.transform([features])
         predicted_label = classifier.predict(features_scaled)[0]
         predicted_class = label_encoder.inverse_transform([predicted_label])[0]
@@ -216,7 +220,7 @@ if os.path.exists(model_path) and os.path.exists(scaler_path) and os.path.exists
         print("Testdaten nicht gefunden. Das Modell muss möglicherweise neu trainiert werden.")
 else:
     st.write("Lade und verarbeite Daten...")
-    features, labels = load_data(folder_path, n_mfcc=11, hop_length=1024, n_fft=4096)
+    features, labels = load_data(folder_path)
     label_encoder = LabelEncoder()
     labels_encoded = label_encoder.fit_transform(labels)
     X_train, X_test, y_train, y_test = train_test_split(features, labels_encoded, test_size=0.2, random_state=42)
@@ -251,7 +255,7 @@ def main():
                     if classifier is None:
                         st.error("Das Modell wurde nicht geladen.")
                     else:
-                        predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
+                        predicted_class = classify_audio(uploaded_file, classifier, scaler, label_encoder)
                         if predicted_class is not None:
                             st.write("Erkannte Tierstimme:", predicted_class)
                         else:
@@ -276,7 +280,7 @@ def main():
         if st.session_state.audio_recorded:
             if st.button("Erkenne Tierstimme"):
                 try:
-                    predicted_class = classify_audio(st.session_state.audio_filename, classifier, scaler, label_encoder, n_mfcc=11, hop_length=1024, n_fft=4096)
+                    predicted_class = classify_audio(st.session_state.audio_filename, classifier, scaler, label_encoder)
                     if predicted_class is not None:
                         st.write("Erkannte Tierstimme:", predicted_class)
                     else:
