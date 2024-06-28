@@ -15,7 +15,7 @@ import seaborn as sns
 
 folder_path = "Animal-SDataset"
 
-n_mfcc = 25
+n_mfcc = 23
 hop_length = 512
 n_fft = 2048
 
@@ -141,9 +141,9 @@ def train_classifier(features, labels):
     features_scaled = scaler.fit_transform(features)
     
     param_grid = {
-        'n_estimators': [100, 200, 300, 400, 500],
-        'max_depth': [None, 10, 15, 20, 25, 35],
-        'min_samples_split': [2, 4, 6, 8, 10]
+        'n_estimators': [200, 300, 400, 500],
+        'max_depth': [None, 12, 17, 20, 24, 28],
+        'min_samples_split': [1, 2, 4, 8, 10]
     }
     
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, verbose=10, n_jobs=-1)
