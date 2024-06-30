@@ -141,9 +141,9 @@ def train_classifier(features, labels):
     features_scaled = scaler.fit_transform(features)
     
     param_grid = {
-        'n_estimators': [200, 300, 400, 500],
+        'n_estimators': [250, 300, 400, 500],
         'max_depth': [None, 12, 17, 20, 24, 28],
-        'min_samples_split': [1, 2, 4, 8, 10]
+        'min_samples_split': [1, 2, 3, 5, 8]
     }
     
     clf = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, verbose=10, n_jobs=-1)
