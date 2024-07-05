@@ -77,7 +77,7 @@ def augment_audio(y, sr):
         augmented_audios.append(librosa.effects.time_stretch(y, rate=1.1))
         augmented_audios.append(librosa.effects.time_stretch(y, rate=0.9))
 
-        # Geschwindigkeitsänderung (Speed Perturbation)
+        # Geschwindigkeitsänderung
         augmented_audios.append(librosa.effects.time_stretch(y, rate=0.95))
         augmented_audios.append(librosa.effects.time_stretch(y, rate=1.05))
 
@@ -94,7 +94,7 @@ def augment_audio(y, sr):
         # Veränderungen der Dynamik
         augmented_audios.append(y * (1 + 0.2 * np.random.randn(len(y))))
 
-        # Kombination von Tonhöhenverschiebung, Zeitstreckung und Rauschbehaftung
+        # Kombination v Tonhöhenverschiebung, Zeitstreckung und Rauschbehaftung
         augmented_audio_1 = librosa.effects.time_stretch(y, rate=1.1)
         augmented_audio_1 = librosa.effects.pitch_shift(augmented_audio_1, sr=sr, n_steps=1)
         augmented_audios.append(augmented_audio_1)
@@ -223,6 +223,7 @@ else:
     features, labels = load_data(folder_path)
     label_encoder = LabelEncoder()
     labels_encoded = label_encoder.fit_transform(labels)
+
     X_train, X_test, y_train, y_test = train_test_split(features, labels_encoded, test_size=0.2, random_state=42)
     
     st.write("Trainiere das Modell...")
