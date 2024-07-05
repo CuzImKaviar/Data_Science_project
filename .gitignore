@@ -169,4 +169,4 @@ cython_debug/
 /models/scaler.joblib
 /models/X_test.npy
 /models/y_test.npy
-Extra audio (unused)
+/Extra audio (unused)
